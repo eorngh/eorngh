@@ -1,0 +1,49 @@
+name: DDak source audit and tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'projects/**'
+      - 'tools/ddak_ci.py'
+      - '.github/workflows/ddak-ci.yml'
+      - '.gitignore'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'projects/**'
+      - 'tools/ddak_ci.py'
+      - '.github/workflows/ddak-ci.yml'
+  schedule:
+    # 23:20 UTC = 08:20 KST the following day; GitHub may delay runs.
+    - cron: '20 23 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ddak-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Detect secrets, projects, and test failures
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Inspect and test detected projects
+        run: python3 tools/ddak_ci.py
