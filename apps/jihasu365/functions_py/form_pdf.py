@@ -176,7 +176,6 @@ def build_pdf(code: str, data: dict, template_dir: Path, out_path: Path, *, cont
         _put(p,(130,488,345,508),f"가로 {d['upper_w']}cm X 세로 {d['upper_d']}cm X 높이 {d['upper_h']}cm",7.5,1); _put(p,(470,488,536,508),d['lower']+' cm',8,2); _put(p,(430,507,536,526),d['grout']+' cm',8,2)
         _put(p,(115,625,205,645),d['start_real'],8,1); _put(p,(330,625,420,645),d['finish_real'],8,1); _put(p,(295,644,536,663),d.get('work_note',''),7.5,2)
         _put(p,(450,716,540,734),date,8,2); _cover_signature(p,(398,735,542,770)); _put(p,(405,740,495,758),d['name'],8,2)
-        _put_stamp_on_company_last_char(p, stamp_path, contractor.get('company','경일지하수'))
     else:
         doc.close(); raise ValueError('지원하지 않는 서식 코드: '+code)
     doc.save(out_path,garbage=4,deflate=True,clean=True)
