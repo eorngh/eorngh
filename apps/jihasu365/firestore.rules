@@ -21,6 +21,55 @@ service cloud.firestore {
     function admin(companyId) {
       return activeMember(companyId) && role(companyId) in ['owner','admin'];
     }
+    function boundedString(value, max) {
+      return value is string && value.size() <= max;
+    }
+    function siteShape(companyId, creatorUid) {
+      return request.resource.data.keys().hasOnly([
+        'name','site','status','client','phone','active','companyId','createdBy',
+        'createdAt','lat','lng','permitProfile','permitPhase','permitUpdatedAt'
+      ])
+      && request.resource.data.companyId == companyId
+      && request.resource.data.createdBy == creatorUid
+      && boundedString(request.resource.data.name, 200)
+      && boundedString(request.resource.data.site, 500)
+      && (!request.resource.data.keys().hasAny(['client']) || boundedString(request.resource.data.client, 200))
+      && (!request.resource.data.keys().hasAny(['phone']) || boundedString(request.resource.data.phone, 40))
+      && (!request.resource.data.keys().hasAny(['status']) || boundedString(request.resource.data.status, 32))
+      && (!request.resource.data.keys().hasAny(['active']) || request.resource.data.active is bool)
+      && (!request.resource.data.keys().hasAny(['lat']) || request.resource.data.lat is number)
+      && (!request.resource.data.keys().hasAny(['lng']) || request.resource.data.lng is number)
+      && (!request.resource.data.keys().hasAny(['permitProfile']) || (request.resource.data.permitProfile is map && request.resource.data.permitProfile.keys().size() <= 80));
+    }
+    function worklogShape(companyId, creatorUid) {
+      return request.resource.data.keys().hasOnly([
+        'companyId','siteId','siteName','siteAddress','date','workers','work',
+        'progressDepth','equipment','materials','note','photos','createdAt',
+        'createdBy','createdByEmail','updatedAt'
+      ])
+      && request.resource.data.companyId == companyId
+      && request.resource.data.createdBy == creatorUid
+      && boundedString(request.resource.data.siteId, 128)
+      && boundedString(request.resource.data.siteName, 200)
+      && boundedString(request.resource.data.siteAddress, 500)
+      && boundedString(request.resource.data.date, 32)
+      && boundedString(request.resource.data.workers, 2000)
+      && boundedString(request.resource.data.work, 10000)
+      && boundedString(request.resource.data.progressDepth, 100)
+      && boundedString(request.resource.data.equipment, 2000)
+      && boundedString(request.resource.data.materials, 4000)
+      && boundedString(request.resource.data.note, 10000)
+      && request.resource.data.photos is list
+      && request.resource.data.photos.size() <= 15;
+    }
+    function clientShape() {
+      return request.resource.data.keys().size() <= 20
+        && (!request.resource.data.keys().hasAny(['name']) || boundedString(request.resource.data.name, 200))
+        && (!request.resource.data.keys().hasAny(['phone']) || boundedString(request.resource.data.phone, 40))
+        && (!request.resource.data.keys().hasAny(['email']) || boundedString(request.resource.data.email, 320))
+        && (!request.resource.data.keys().hasAny(['address']) || boundedString(request.resource.data.address, 500))
+        && (!request.resource.data.keys().hasAny(['note']) || boundedString(request.resource.data.note, 10000));
+    }
 
     match /users/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
@@ -41,30 +90,32 @@ service cloud.firestore {
 
       match /sites/{siteId} {
         allow read: if activeMember(companyId);
-        allow create: if manager(companyId)
-          && request.resource.data.companyId == companyId
-          && request.resource.data.createdBy == request.auth.uid;
+        allow create: if manager(companyId) && siteShape(companyId, request.auth.uid);
         allow update: if manager(companyId)
           && request.resource.data.companyId == companyId
-          && resource.data.companyId == companyId;
+          && request.resource.data.createdBy == resource.data.createdBy
+          && siteShape(companyId, resource.data.createdBy);
         allow delete: if admin(companyId);
       }
 
       match /worklogs/{logId} {
         allow read: if activeMember(companyId);
-        allow create: if activeMember(companyId)
-          && request.resource.data.companyId == companyId
-          && request.resource.data.createdBy == request.auth.uid;
+        allow create: if activeMember(companyId) && worklogShape(companyId, request.auth.uid);
         allow update: if activeMember(companyId)
           && request.resource.data.companyId == companyId
           && resource.data.companyId == companyId
           && (manager(companyId) || resource.data.createdBy == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['date','workers','work','progressDepth','equipment','materials','note','photos','updatedAt']);
+             .hasOnly(['date','workers','work','progressDepth','equipment','materials','note','photos','updatedAt'])
+          && worklogShape(companyId, resource.data.createdBy);
         allow delete: if admin(companyId) || (activeMember(companyId) && resource.data.createdBy == request.auth.uid);
       }
 
-      match /clients/{docId} { allow read, write: if manager(companyId); }
+      match /clients/{docId} {
+        allow read: if manager(companyId);
+        allow create, update: if manager(companyId) && clientShape();
+        allow delete: if admin(companyId);
+      }
       match /documents/{docId} { allow read: if activeMember(companyId); allow write: if false; }
       match /subscriptions/{docId} { allow read: if admin(companyId); allow write: if false; }
       match /auditLogs/{docId} { allow read: if admin(companyId); allow write: if false; }
