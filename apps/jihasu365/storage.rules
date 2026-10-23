@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function userPath() { return /databases/(default)/documents/users/$(request.auth.uid); }
+    function memberPath(companyId) { return /databases/(default)/documents/companies/$(companyId)/members/$(request.auth.uid); }
+    function activeMember(companyId) {
+      return signedIn()
+        && firestore.exists(userPath())
+        && firestore.get(userPath()).data.companyId == companyId
+        && firestore.get(userPath()).data.status == 'active'
+        && firestore.exists(memberPath(companyId))
+        && firestore.get(memberPath(companyId)).data.status == 'active';
+    }
+
+    match /companies/{companyId}/sites/{siteId}/documents/{batchId}/{fileName} {
+      allow read: if activeMember(companyId);
+      allow write: if false; // 신고서 PDF는 서버 함수만 생성합니다.
+    }
+
+    match /companies/{companyId}/sites/{siteId}/worklogs/{logId}/{uid}/{fileName} {
+      allow read: if activeMember(companyId);
+      allow create, update: if activeMember(companyId)
+        && request.auth.uid == uid
+        && request.resource.size < 12 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if activeMember(companyId) && request.auth.uid == uid;
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}
