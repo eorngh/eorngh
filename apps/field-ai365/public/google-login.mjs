@@ -1,0 +1,9 @@
+export async function googleLogin(config){
+ if(globalThis.NativeBridge){const token=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{window.removeEventListener('native-google-result',handler);reject(new Error('Google 로그인 응답을 확인해 주세요.'));},90000);const handler=e=>{clearTimeout(timer);window.removeEventListener('native-google-result',handler);e.detail.token?resolve(e.detail.token):reject(new Error('Google 로그인이 취소되었거나 앱 인증서 설정 확인이 필요합니다.'));};window.addEventListener('native-google-result',handler);window.NativeBridge.googleLogin();});const response=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key='+encodeURIComponent(config.apiKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postBody:new URLSearchParams({id_token:token,providerId:'google.com'}).toString(),requestUri:'http://localhost',returnSecureToken:true})});const result=await response.json();if(!response.ok)throw new Error('Firebase Google 계정 연결 실패');return {uid:result.localId,email:result.email,idToken:result.idToken,refreshToken:result.refreshToken,expires:Date.now()+3300000,projectId:config.projectId};}
+ const app=await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js');
+ const auth=await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+ const firebase=app.getApps().find(a=>a.name==='hj365-auth')||app.initializeApp({apiKey:config.apiKey,projectId:config.projectId,authDomain:config.projectId+'.firebaseapp.com',appId:config.appId},'hj365-auth');
+ const a=auth.getAuth(firebase);await auth.setPersistence(a,auth.inMemoryPersistence);
+ const result=await auth.signInWithPopup(a,new auth.GoogleAuthProvider());const user=result.user;
+ return {uid:user.uid,email:user.email,idToken:await user.getIdToken(),refreshToken:user.refreshToken,expires:Date.now()+3300000,projectId:config.projectId};
+}

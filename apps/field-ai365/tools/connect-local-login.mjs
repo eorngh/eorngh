@@ -1,0 +1,11 @@
+import{readFile,writeFile}from'node:fs/promises';
+let p='server.mjs',s=await readFile(p,'utf8');
+s=s.replace("script-src 'self';", "script-src 'self' https://www.gstatic.com;");s=s.replace("object-src 'none';", "frame-src https://gyeongilwater.firebaseapp.com https://accounts.google.com; object-src 'none';");s=s.replace('https://services.arcgisonline.com ', 'https://services.arcgisonline.com https://www.googleapis.com https://www.gstatic.com https://gyeongilwater.firebaseapp.com ');
+s=s.replace("if(path==='/api/status')",`if(path==='/api/firebase-config'){if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress))return send(403,{error:'Local only'});try{const c=JSON.parse(await readFile(resolve(ROOT,'.local/firebase-runtime.json'),'utf8'));return send(200,c);}catch{return send(404,{error:'Local configuration missing'});}}\n if(path==='/api/status')`);
+await writeFile(p,s);
+p='public/app.mjs';s=await readFile(p,'utf8');s="import{googleLogin}from'./google-login.mjs';\n"+s;
+s=s.replace("'계정 연결','<p", "'계정 연결',btn('Google로 로그인','google-login','','primary')+'<p");
+s=s.replace("if(a==='map-style'){",`if(a==='google-login'){try{cloud.session=await googleLogin(config);cloud.persist();repo.close();repo=await new Repository(cloud.session.uid,config.projectId).open();modal.close();await reload();route='home';render();toast('Google 로그인 완료 · 클라우드 전송은 별도 승인 후 실행합니다.');}catch(error){toast(error.code==='auth/unauthorized-domain'?'Firebase 승인 도메인에 localhost 확인 필요':error.message||'Google 로그인 실패');}return;}\n if(a==='map-style'){`);
+s=s.replace("async function boot(){cloud=", "async function boot(){if(!config.projectId&&location.hostname!=='appassets.androidplatform.net'){try{const r=await fetch('/api/firebase-config');if(r.ok){config=await r.json();localStorage.setItem('hj365-config',JSON.stringify(config));}}catch{}}cloud=");
+await writeFile(p,s);
+p='public/sw.js';s=await readFile(p,'utf8');s=s.replace("'registration.mjs',","'registration.mjs','google-login.mjs',");s=s.replace('hj365-v020-integration','hj365-v020-shared-google');await writeFile(p,s);

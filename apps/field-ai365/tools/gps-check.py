@@ -1,0 +1,20 @@
+from playwright.sync_api import sync_playwright, expect
+with sync_playwright() as p:
+    b=p.chromium.launch()
+    c=b.new_context(permissions=['geolocation'],geolocation={'latitude':37.5,'longitude':127})
+    page=c.new_page()
+    page.goto('http://127.0.0.1:3650')
+    page.get_by_role('button',name='AI 현장등록',exact=True).click()
+    page.get_by_label('도로명·지번 주소').fill('위치 회귀검증 주소')
+    page.get_by_role('button',name='다음',exact=True).click()
+    page.get_by_role('button',name='현재 위치 사용',exact=True).click()
+    expect(page.get_by_label('위도 · 선택')).to_have_value('37.5')
+    assert page.locator('#registration-error').inner_text()==''
+    assert page.get_by_role('button',name='현재 위치 사용',exact=True).is_enabled()
+    print('PASS GPS success values and error reset (browser simulated location)')
+    c.clear_permissions()
+    page.get_by_role('button',name='현재 위치 사용',exact=True).click()
+    page.get_by_text('위치권한 또는 GPS 확인 필요',exact=False).wait_for()
+    assert page.get_by_role('button',name='현재 위치 사용',exact=True).is_enabled()
+    print('PASS GPS denial fallback and retry')
+    b.close()
