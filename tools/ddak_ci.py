@@ -12,6 +12,9 @@ notes = []
 failures = []
 checks = 0
 NPM = "npm.cmd" if os.name == "nt" else "npm"
+PUBLIC_FIREBASE_CONFIGS = {
+    Path("apps/field-ai365/android/app/src/main/assets/_firebase-runtime.json"),
+}
 
 def note(label, message):
     notes.append((label, message))
@@ -51,6 +54,8 @@ def security_scan():
         if not path.is_file() or path.stat().st_size > 2_000_000:
             continue
         data = path.read_bytes()
+        if name.as_posix() in {p.as_posix() for p in PUBLIC_FIREBASE_CONFIGS}:
+            continue
         if any(p.search(data) for p in patterns):
             bad.append(str(name))
     if bad:
