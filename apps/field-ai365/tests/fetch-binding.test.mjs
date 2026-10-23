@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{Cloud}from'../public/cloud.mjs';import{AddressProvider}from'../public/providers.mjs';
+test('native fetch는 globalThis 문맥으로 실행',async()=>{const old=globalThis.fetch;globalThis.fetch=function(){assert.equal(this,globalThis);return Promise.resolve({ok:true,json:async()=>({ok:true})});};try{assert.deepEqual(await new Cloud({}).request('test'),{ok:true});assert.deepEqual(await new AddressProvider().search('test'),{ok:true});}finally{globalThis.fetch=old;}});

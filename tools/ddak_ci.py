@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 notes = []
 failures = []
 checks = 0
+NPM = "npm.cmd" if os.name == "nt" else "npm"
 
 def note(label, message):
     notes.append((label, message))
@@ -82,8 +83,8 @@ def check_projects():
             if not (base / "package-lock.json").is_file():
                 note("SKIP", f"{relative}: npm checks need package-lock.json")
             else:
-                commands = [["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
-                commands += [["npm", "run", task] for task in ("lint", "test", "build")
+                commands = [[NPM, "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
+                commands += [[NPM, "run", task] for task in ("lint", "test", "build")
                              if task in pkg.get("scripts", {})]
                 for cmd in commands:
                     checks += 1

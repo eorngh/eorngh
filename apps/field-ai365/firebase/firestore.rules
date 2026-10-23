@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  match /hyeonjang365Users/{uid} {
+   allow get: if request.auth != null && request.auth.uid == uid;
+   allow create, update: if request.auth != null && request.auth.uid == uid
+    && request.resource.data.keys().hasOnly(['deleting','lockedAt'])
+    && request.resource.data.deleting == true
+    && request.resource.data.lockedAt is timestamp;
+  }
+  match /hyeonjang365Users/{uid}/{collection}/{id} {
+   function owner() { return request.auth != null && request.auth.uid == uid; }
+   function writable() { return !exists(/databases/$(database)/documents/hyeonjang365Users/$(uid))
+     || get(/databases/$(database)/documents/hyeonjang365Users/$(uid)).data.deleting != true; }
+   allow read: if owner();
+   allow create, update: if owner() && writable()
+    && collection in ['sites','logs','photos','documents','payments','clients','profile']
+    && request.resource.data.keys().hasOnly(['payload','revision','deleted'])
+    && request.resource.data.payload is string && request.resource.data.payload.size() <= 400000
+    && request.resource.data.revision is string && request.resource.data.revision.size() <= 100
+    && request.resource.data.deleted is bool;
+   allow delete: if owner();
+  }
+ }
+}

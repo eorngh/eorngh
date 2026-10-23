@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{Cloud}from'../public/cloud.mjs';
+test('gyeongilwater는 체크박스 값과 무관하게 공용 Auth 삭제 차단',async()=>{let requests=0;const cloud=new Cloud({projectId:'gyeongilwater',dedicatedProject:true},()=>{requests++;});cloud.session={email:'test@example.invalid'};await assert.rejects(cloud.deleteWorkspaceAndAccount('test-only'),/공유 프로젝트/);assert.equal(requests,0);assert.equal(cloud.config.dedicatedProject,false);});
+test('공유 프로젝트 직접 deleteAccount도 네트워크 요청 없이 차단',async()=>{let requests=0;const cloud=new Cloud({projectId:'gyeongilwater',dedicatedProject:true},()=>{requests++;});cloud.session={email:'test@example.invalid'};await assert.rejects(cloud.deleteAccount('test-only'),/공유 프로젝트/);assert.equal(requests,0);});

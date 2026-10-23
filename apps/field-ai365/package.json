@@ -1,0 +1,1 @@
+{"name":"hyeonjang-ai365","version":"0.2.0","private":true,"type":"module","scripts":{"start":"node server.mjs","test":"node --test tests/*.test.mjs","build":"node tools/build.mjs"},"engines":{"node":">=22"}}
