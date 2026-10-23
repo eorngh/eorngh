@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function hasUser() { return signedIn() && exists(userDoc()); }
+    function userData() { return get(userDoc()).data; }
+    function sameCompany(companyId) {
+      return hasUser() && userData().companyId == companyId && userData().status == 'active';
+    }
+    function memberPath(companyId) {
+      return /databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid);
+    }
+    function activeMember(companyId) {
+      return sameCompany(companyId) && exists(memberPath(companyId)) && get(memberPath(companyId)).data.status == 'active';
+    }
+    function role(companyId) { return get(memberPath(companyId)).data.role; }
+    function manager(companyId) {
+      return activeMember(companyId) && role(companyId) in ['owner','admin','manager'];
+    }
+    function admin(companyId) {
+      return activeMember(companyId) && role(companyId) in ['owner','admin'];
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /companies/{companyId} {
+      allow read: if activeMember(companyId);
+      allow create, delete: if false;
+      allow update: if admin(companyId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name','phone','address','updatedAt']);
+
+      match /members/{uid} {
+        allow read: if activeMember(companyId);
+        allow write: if false;
+      }
+
+      match /sites/{siteId} {
+        allow read: if activeMember(companyId);
+        allow create: if manager(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if manager(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if admin(companyId);
+      }
+
+      match /worklogs/{logId} {
+        allow read: if activeMember(companyId);
+        allow create: if activeMember(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if activeMember(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId
+          && (manager(companyId) || resource.data.createdBy == request.auth.uid)
+          && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['date','workers','work','progressDepth','equipment','materials','note','photos','updatedAt']);
+        allow delete: if admin(companyId) || (activeMember(companyId) && resource.data.createdBy == request.auth.uid);
+      }
+
+      match /clients/{docId} { allow read, write: if manager(companyId); }
+      match /documents/{docId} { allow read: if activeMember(companyId); allow write: if false; }
+      match /subscriptions/{docId} { allow read: if admin(companyId); allow write: if false; }
+      match /auditLogs/{docId} { allow read: if admin(companyId); allow write: if false; }
+    }
+
+    match /invites/{inviteId} { allow read, write: if false; }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
