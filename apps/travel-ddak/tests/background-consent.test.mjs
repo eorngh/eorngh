@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {createBackgroundConsent} from '../dist/background-consent.js';
+function store(seed=[]){const m=new Map(seed);return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v)};}
+test('server preparation consent is scoped to each trip and survives restart',()=>{const s=store(),c=createBackgroundConsent(s);c.add('a');c.add('b');c.remove('a');assert(!c.has('a'));assert(c.has('b'));assert(!c.has('new-trip'));assert(createBackgroundConsent(s).has('b'));c.clear();assert.equal(c.size,0);});
+test('legacy global consent migrates existing trips once without opting future trips in',()=>{const s=store([['travel-ddak.background.v1','true']]);assert(createBackgroundConsent(s,['old']).has('old'));const c=createBackgroundConsent(s,['old','new']);assert(c.has('old'));assert(!c.has('new'));});

@@ -1,0 +1,3 @@
+import {writeFile} from 'node:fs/promises';import {makeTrip,dayAt} from '../dist/core.js';
+const trips=[3,5,7,9,14].map(days=>({...makeTrip({parentId:'busan',city:days===14?'합성검증_매우긴여행목적지이름'.repeat(4):'해운대',start:'2026-11-01',end:dayAt('2026-11-01',days-1)},'2026-10-17'),id:'synthetic-layout-'+days,notes:'합성 QA · '+days+'일 여행 · 개인정보 없음',stops:[{id:'synthetic-stop-'+days,day:0,name:'합성 장소 · 긴 한글 문장 줄바꿈 검증',address:'부산 해운대 '.repeat(25),time:'10:00',source:'https://example.com/'}]}));
+await writeFile('artifacts/UI_DURATION_FIXTURES.json',JSON.stringify({version:1,trips,recents:[]},null,2));console.log('Prepared five synthetic trips: 3/5/7/9/14 days');
