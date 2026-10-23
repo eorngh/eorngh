@@ -9,13 +9,12 @@ import re
 from firebase_functions import https_fn
 from firebase_admin import initialize_app, firestore, storage
 
-from form_pdf import generate_forms, FORM_NAMES, DEFAULT_CONTRACTOR
+from form_pdf import generate_forms, FORM_NAMES
 
 initialize_app()
 DB = firestore.client()
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / 'templates'
-BUNDLED_STAMP = ROOT / '경일지하수_직인_자연.png'
 
 
 def err(code, message):
@@ -43,10 +42,10 @@ def contractor_from_company(company: dict) -> dict:
         'cphone': settings.get('phone') or company.get('phone',''),
         'fax': settings.get('fax',''),
     }
-    # Alpha 0.2: 경일지하수는 기존 검증된 시공업체 정보로 빈 항목을 보완합니다.
-    if c['company']=='경일지하수':
-        for k,v in DEFAULT_CONTRACTOR.items():
-            if not c.get(k): c[k]=v
+    required=('company','ceo','reg','caddr','cphone')
+    missing=[key for key in required if not str(c.get(key) or '').strip()]
+    if missing:
+        err(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, '업체 설정에서 신고서 발행 정보를 먼저 입력하세요: '+', '.join(missing))
     return c
 
 
@@ -78,13 +77,12 @@ def generateForms(req: https_fn.CallableRequest) -> Any:
     company_snap=DB.document(f'companies/{company_id}').get()
     if not company_snap.exists: err(https_fn.FunctionsErrorCode.NOT_FOUND, '업체 정보를 찾을 수 없습니다.')
     company=company_snap.to_dict(); contractor=contractor_from_company(company)
-    stamp=BUNDLED_STAMP if contractor.get('company')=='경일지하수' and BUNDLED_STAMP.exists() else None
 
     now=datetime.now(timezone.utc); batch_key=now.strftime('%Y%m%d_%H%M%S')
     bucket=storage.bucket(); results=[]
     try:
         with tempfile.TemporaryDirectory(prefix='h365_forms_') as td:
-            files=generate_forms(codes,data,TEMPLATES,Path(td),stamp_path=stamp,contractor=contractor,report_date=datetime.now().strftime('%Y-%m-%d'))
+            files=generate_forms(codes,data,TEMPLATES,Path(td),contractor=contractor,report_date=datetime.now().strftime('%Y-%m-%d'))
             for code,path in zip(codes,files):
                 filename=f'{safe_name(site.get("name") or data.get("site"))}_{FORM_NAMES[code]}.pdf'
                 storage_path=f'companies/{company_id}/sites/{site_id}/documents/{batch_key}/{filename}'
