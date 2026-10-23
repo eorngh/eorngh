@@ -28,14 +28,6 @@ REQ = {
     '9':['name','birth','phone','address','site','coord1','coord2','use','drink','depth','diameter','planned','hp','pipe','pumpdepth','capacity','start_plan','finish_plan'],
     '13':['name','birth','phone','address','site','coord1','coord2','use','drink','depth','diameter','planned','hp','pipe','pumpdepth','capacity','outlet','meter','level','upper_w','upper_d','upper_h','lower','grout','start_real','finish_real'],
 }
-DEFAULT_CONTRACTOR = {
-    'company':'경일지하수',
-    'ceo':'김윤호',
-    'reg':'615-17-85681',
-    'caddr':'경북 칠곡군 지천면 영오리 35-1',
-    'cphone':'010-3452-8765',
-    'fax':'0504-416-3175',
-}
 FONT_NAME = 'korea'
 
 
@@ -95,23 +87,11 @@ def _cover_signature(page, rect):
     page.draw_rect(fitz.Rect(*rect),color=None,fill=(1,1,1),overlay=True)
 
 
-def _put_stamp_on_company_last_char(page, stamp_path: Path|None, word='경일지하수', size=68):
-    if not stamp_path or not Path(stamp_path).exists(): return None
-    hits=[w for w in page.get_text('words') if w[4]==word]
-    if not hits: return None
-    w=max(hits, key=lambda x:x[1]); x0,y0,x1,y1=w[:4]
-    n=max(1,len(word)); charw=(x1-x0)/n
-    cx=x0+charw*(n-0.5); cy=(y0+y1)/2
-    r=fitz.Rect(cx-size/2,cy-size/2,cx+size/2,cy+size/2)
-    page.insert_image(r,filename=str(stamp_path),overlay=True,keep_proportion=True)
-    return r
-
-
 def _text_width(text, fontsize):
     return fitz.Font(fontname=FONT_NAME).text_length(str(text), fontsize=fontsize)
 
 
-def _rebuild_form9_contractor_table(page, contractor: dict, stamp_path: Path|None):
+def _rebuild_form9_contractor_table(page, contractor: dict):
     x0, x1, x2, x3 = 133.728, 254.503, 431.288, 538.870
     yt, ym, yb = 542.886, 573.932, 629.791
     page.add_redact_annot(fitz.Rect(390.0, 537.2, 450.0, 595.0), fill=(1,1,1))
@@ -125,10 +105,6 @@ def _rebuild_form9_contractor_table(page, contractor: dict, stamp_path: Path|Non
     company=contractor.get('company',''); fs_company=8.8
     tx=x1-8.0-_text_width(company,fs_company); base=570.2
     page.insert_text((tx,base),company,fontname=FONT_NAME,fontsize=fs_company,color=(0,0,0),overlay=True)
-    if stamp_path and Path(stamp_path).exists() and company:
-        before=_text_width(company[:-1],fs_company); last=_text_width(company[-1],fs_company)
-        cx=tx+before+last/2; cy=563.6; ss=55.5
-        page.insert_image(fitz.Rect(cx-ss/2,cy-ss/2,cx+ss/2,cy+ss/2),filename=str(stamp_path),overlay=True,keep_proportion=True)
     rep=contractor.get('ceo',''); fs=8.6
     page.insert_text((x2-8.0-_text_width(rep,fs),570.2),rep,fontname=FONT_NAME,fontsize=fs,color=(0,0,0),overlay=True)
     reg=contractor.get('reg',''); rfs=8.2
@@ -150,12 +126,16 @@ def prepare_data(data: dict) -> dict:
     return d
 
 
-def build_pdf(code: str, data: dict, template_dir: Path, out_path: Path, *, stamp_path: Path|None=None, contractor: dict|None=None, report_date: str|None=None):
+def build_pdf(code: str, data: dict, template_dir: Path, out_path: Path, *, contractor: dict|None=None, report_date: str|None=None):
     code=str(code); d=prepare_data(data)
     missing=validate(code,d)
     if missing:
         raise ValueError(f'{FORM_NAMES.get(code,code)} 필수값 누락: '+', '.join(missing))
-    contractor={**DEFAULT_CONTRACTOR, **(contractor or {})}
+    contractor=dict(contractor or {})
+    required=('company','ceo','reg','caddr','cphone')
+    missing=[key for key in required if not str(contractor.get(key) or '').strip()]
+    if missing:
+        raise ValueError('신고서 업체정보 누락: '+', '.join(missing))
     template=Path(template_dir)/f'form_{code}.pdf'
     if not template.exists(): raise FileNotFoundError(template)
     out_path=Path(out_path); out_path.parent.mkdir(parents=True,exist_ok=True)
@@ -169,7 +149,6 @@ def build_pdf(code: str, data: dict, template_dir: Path, out_path: Path, *, stam
         _put(p,(449,274,535,291),d['purpose'],8,1); _put(p,(449,291,535,307),'('+d['use']+')',7.5,1)
         _put(p,(145,325,300,343),d['start_plan'],8,2); _put(p,(356,325,535,343),d['restore_plan'],8,2)
         _put(p,(460,444,540,460),date,8,2); _cover_signature(p,(398,456,542,493)); _put(p,(405,461,500,480),d['name'],8,2); p.draw_line((60,493),(535,493),color=(0,0,0),width=1.0,overlay=True)
-        _put_stamp_on_company_last_char(p, stamp_path, contractor.get('company','경일지하수'))
     elif code=='25':
         _put(p,(250,180,318,197),d['name'],9,2); _put(p,(445,177,535,194),d['birth'],9,2)
         _put(p,(330,207,535,224),d['address'],8,2); _put(p,(390,233,535,250),f'(전화번호:{d["phone"]})',8,2)
@@ -184,7 +163,7 @@ def build_pdf(code: str, data: dict, template_dir: Path, out_path: Path, *, stam
         _put(p,(285,336,357,356),d['depth']+'m',8.5,2); _put(p,(475,336,535,356),d['diameter']+'㎜',8.5,2); _put(p,(260,376,535,397),d['planned']+'㎥/일',8.5,2)
         _put(p,(300,425,357,445),d['hp']+'HP',8.5,2); _put(p,(480,425,535,445),d['pipe']+'㎜',8.5,2); _put(p,(285,466,357,486),d['pumpdepth']+'m',8.5,2); _put(p,(475,466,535,486),d['capacity']+'㎥/일',8.5,2)
         _put(p,(185,515,300,536),d['start_plan'],8,2); _put(p,(420,515,535,536),d['finish_plan'],8,2)
-        _rebuild_form9_contractor_table(p,contractor,stamp_path)
+        _rebuild_form9_contractor_table(p,contractor)
         _put(p,(450,691,540,708),date,8,2); _cover_signature(p,(395,706,542,750)); _put(p,(405,714,495,733),d['name'],8,2); p.draw_line((60,748),(535,748),color=(0,0,0),width=1.2,overlay=True)
     elif code=='13':
         _put(p,(270,171,345,190),d['name'],9,2); _put(p,(445,169,536,187),d['birth'],8.5,2)
@@ -205,11 +184,11 @@ def build_pdf(code: str, data: dict, template_dir: Path, out_path: Path, *, stam
     return out_path
 
 
-def generate_forms(codes, data, template_dir, output_dir, *, stamp_path=None, contractor=None, report_date=None):
+def generate_forms(codes, data, template_dir, output_dir, *, contractor=None, report_date=None):
     out=[]; output_dir=Path(output_dir); output_dir.mkdir(parents=True,exist_ok=True)
     safe_site=re.sub(r'[\\/:*?"<>|]+','_',str(data.get('siteName') or data.get('site') or '현장')).strip()[:50]
     for code in [str(c) for c in codes]:
         name=f'{code}_{safe_site}_{FORM_NAMES.get(code,code)}.pdf'
-        p=build_pdf(code,data,Path(template_dir),output_dir/name,stamp_path=Path(stamp_path) if stamp_path else None,contractor=contractor,report_date=report_date)
+        p=build_pdf(code,data,Path(template_dir),output_dir/name,contractor=contractor,report_date=report_date)
         out.append(p)
     return out
