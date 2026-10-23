@@ -1,0 +1,21 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {validateStops} from '../dist/itinerary.js';
+import {COUNTRIES,PROVINCES,ALL,validDate,daysBetween,pickDate,makeTrip,validateState,addRecent,recommend,offlineHtml,dayAt} from '../dist/core.js';
+test('국내 17개 광역지역·해외 14개, 식별자 중복 없음',()=>{assert.equal(PROVINCES.length,17);assert.equal(COUNTRIES.length,14);assert.equal(new Set(ALL.map(p=>p.id)).size,ALL.length);});
+test('유효 날짜·윤년·월말 이동',()=>{assert(validDate('2028-02-29'));assert(!validDate('2027-02-29'));assert(!validDate('2026-13-01'));assert.equal(dayAt('2026-12-31',1),'2027-01-01');});
+test('달력 범위 재선택·당일·역순',()=>{assert.deepEqual(pickDate('','','2026-11-20'),{start:'2026-11-20',end:''});assert.deepEqual(pickDate('2026-11-20','','2026-11-19'),{start:'2026-11-19',end:''});assert.deepEqual(pickDate('2026-11-20','','2026-11-20'),{start:'2026-11-20',end:'2026-11-20'});assert.equal(daysBetween('2026-11-20','2026-11-23'),4);assert.throws(()=>daysBetween('2026-11-23','2026-11-20'));assert.throws(()=>daysBetween('2026-01-01','2026-12-31'));});
+test('여행 생성 입력 검증·과거 날짜 거부',()=>{const t=makeTrip({parentId:'jp',city:'후쿠오카',start:'2026-11-20',end:'2026-11-23'},'2026-10-15');assert.equal(t.days,4);assert.equal(t.parentName,'일본');assert.throws(()=>makeTrip({...t,start:'2026-01-01'},'2026-10-15'));assert.throws(()=>makeTrip({...t,parentId:'unknown'},'2026-10-15'));});
+test('복원은 외부 스키마·중복·대형 입력 거부',()=>{const t=makeTrip({parentId:'jp',city:'도쿄',start:'2026-11-01',end:'2026-11-03'},'2026-01-01');const raw={version:1,trips:[t],recents:[]};assert.deepEqual(validateState(raw).trips[0],t);assert.throws(()=>validateState({...raw,version:2}));assert.throws(()=>validateState({...raw,trips:[t,t]}));assert.throws(()=>validateState({...raw,trips:[{...t,notes:'x'.repeat(5001)}]}));});
+test('최근 여행지는 중복 제거·최대 8개',()=>{let r=[];for(let n=0;n<12;n++)r=addRecent(r,{parentId:'jp',city:'도시'+n});assert.equal(r.length,8);r=addRecent(r,r[4]);assert.equal(r.length,8);assert.equal(r[0].city,'도시7');});
+test('기기 내 추천은 취향·국내 필터 준수, 점수 꾸밈 없음',()=>{const r=recommend(['자연','휴식'],'domestic');assert(r.every(x=>PROVINCES.some(p=>p.id===x.parent)));assert.equal(r[0].city,'제주시');assert(!('probability' in r[0]));});
+test('오프라인 여행팩은 HTML 안전 처리·외부 리소스 없음',()=>{const t=makeTrip({parentId:'jp',city:'도쿄',start:'2026-11-01',end:'2026-11-03'},'2026-01-01');t.notes='<script>alert(1)</script>';const html=offlineHtml(t);assert(html.includes('&lt;script&gt;'));assert(!html.includes('<script>'));assert(!/https?:\/\//.test(html));assert(html.includes('행사·영업시간·입국 요건'));});
+test('일차별 장소는 백업·여행팩에 보존하며 실행 가능한 출처 거부',()=>{
+ const t=makeTrip({parentId:'jp',city:'도쿄',start:'2026-11-01',end:'2026-11-03'},'2026-01-01');
+ const stop={id:'stop-1',day:1,time:'10:30',name:'<장소>',address:'테스트 주소',source:'https://example.com/official'};t.stops=[stop];
+ assert.deepEqual(validateState({version:1,trips:[t],recents:[]}).trips[0].stops,[stop]);
+ const html=offlineHtml(t);assert(html.includes('&lt;장소&gt;'));assert(html.includes('2026-11-02'));assert(html.includes('10:30'));
+ assert.throws(()=>validateStops([{...stop,source:'javascript:alert(1)'}],3));
+ assert.throws(()=>validateStops([{...stop,day:3}],3));assert.throws(()=>validateStops([{...stop,time:'25:00'}],3));
+ assert.throws(()=>validateStops([{...stop,source:'https://user:pass@example.com'}],3));
+ const {stops,...legacy}=t;assert.deepEqual(validateState({version:1,trips:[legacy],recents:[]}).trips[0].stops,[]);
+});
