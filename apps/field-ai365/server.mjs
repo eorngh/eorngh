@@ -18,6 +18,10 @@ export function createServer({env=process.env,fetcher=globalThis.fetch}={}){
  return send(result.status==='INVALID'?400:result.status==='ERROR'?502:result.status==='LIMITED'?429:200,result);
  }
  if(path==='/api/firebase-config'){if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress))return send(403,{error:'Local only'});try{const c=JSON.parse(await readFile(resolve(ROOT,'.local/firebase-runtime.json'),'utf8'));return send(200,c);}catch{return send(404,{error:'Local configuration missing'});}}
+ if(path==='/api/public-data/status'){
+ if(req.method!=='GET')return send(405,{error:'GET 요청이 필요합니다.'});
+ return send(200,{service:'field-ai365',addressSearchConfigured:!!env.JUSO_SEARCH_KEY?.trim(),verification:'NOT_TESTED'});
+ }
  if(path==='/api/status')return send(200,{aiEnabled:env.ALLOW_AI_CALLS==='true',firebaseConfigured:!!env.FIREBASE_WEB_API_KEY,version:'0.1.0'});
  if(path==='/api/ai/suggest'){
  if(req.method!=='POST')return send(405,{error:'POST 요청이 필요합니다.'});
