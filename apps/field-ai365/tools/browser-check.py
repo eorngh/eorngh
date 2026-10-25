@@ -1,12 +1,13 @@
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 import json
+import os
 root=Path(__file__).resolve().parents[1]
 out=root/'evidence'/'integration-ui'
-out.mkdir(exist_ok=True)
+out.mkdir(parents=True,exist_ok=True)
 results=[]
 with sync_playwright() as p:
-    browser=p.chromium.launch(headless=True)
+    browser=p.chromium.launch(headless=True,executable_path=os.environ.get('FIELD365_CHROMIUM'))
     context=browser.new_context(viewport={'width':390,'height':844})
     page=context.new_page()
     errors=[]
@@ -95,6 +96,8 @@ with sync_playwright() as p:
             page.wait_for_timeout(120)
             overflow=page.evaluate('document.documentElement.scrollWidth>innerWidth+1')
             results.append({'test':f'{route} {width}px 가로잘림','status':'FAIL' if overflow else 'PASS'})
+        page.goto('http://127.0.0.1:3650/#home')
+        page.locator('.workspace').wait_for()
         page.screenshot(path=str(out/f'home-{width}.png'),full_page=True)
     context.set_offline(True)
     page.goto('http://127.0.0.1:3650/#sites')
@@ -104,3 +107,5 @@ with sync_playwright() as p:
     (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf8')
     print(json.dumps(results,ensure_ascii=False))
     browser.close()
+if any(row['status']=='FAIL' for row in results):
+    raise SystemExit('Browser verification failed; see evidence/integration-ui/results.json')

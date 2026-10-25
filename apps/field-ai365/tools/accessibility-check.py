@@ -1,10 +1,11 @@
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 import json
+import os
 root=Path(__file__).resolve().parents[1]
 rows=[]
 with sync_playwright() as p:
-    b=p.chromium.launch()
+    b=p.chromium.launch(executable_path=os.environ.get('FIELD365_CHROMIUM'))
     page=b.new_page()
     for width in [320,360,390,768,1440]:
         page.set_viewport_size({'width':width,'height':900})
@@ -19,3 +20,5 @@ with sync_playwright() as p:
     (root/'evidence'/'accessibility-check.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2),encoding='utf8')
     print(json.dumps(rows,ensure_ascii=False))
     b.close()
+if any(row['status']=='FAIL' for row in rows):
+    raise SystemExit('Accessibility verification failed; see evidence/accessibility-check.json')

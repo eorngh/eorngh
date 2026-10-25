@@ -12,7 +12,6 @@ service firebase.storage {
     && request.resource.size <= 20 * 1024 * 1024
     && request.resource.contentType.matches('image/(jpeg|png|webp)');
   }
- }
   match /{allPaths=**} { allow read, write: if false; }
  }
 }
