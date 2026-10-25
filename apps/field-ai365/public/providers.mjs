@@ -1,3 +1,4 @@
+import {publicApiOrigin,readNativePublicApiOrigin} from './public-api-config.mjs';
 export class ProviderBlocked extends Error {constructor(message){super(message);this.status='BLOCKED';}}
 export class MapProvider {async render(){throw new ProviderBlocked('지도 공급자가 설정되지 않았습니다.');} destroy(){}}
 export function mapRequestError(code){
@@ -39,8 +40,8 @@ export class ArcGISProvider extends MapProvider {
   destroy(){if(this.imageUrl)URL.revokeObjectURL(this.imageUrl);this.imageUrl=null;}
 }
 export class AddressProvider {
-  constructor({fetcher=fetch}={}){this.fetcher=fetcher===globalThis.fetch?fetcher.bind(globalThis):fetcher;}
-  async search(keyword){if(globalThis.location?.hostname==='appassets.androidplatform.net')return {status:'BLOCKED',message:'공공 주소 검색 서버 연결 전입니다. 주소를 직접 입력해 주세요.',items:[]};if(keyword.trim().length<2)throw new Error('주소를 두 글자 이상 입력해 주세요.');const r=await this.fetcher('/api/address?keyword='+encodeURIComponent(keyword),{signal:AbortSignal.timeout(12000)});if(!r.ok)throw new Error('주소검색 연결 실패');return r.json();}
+  constructor({fetcher=fetch,native=globalThis.location?.hostname==='appassets.androidplatform.net',serverOrigin=readNativePublicApiOrigin()}={}){this.fetcher=fetcher===globalThis.fetch?fetcher.bind(globalThis):fetcher;this.native=native;try{this.serverOrigin=serverOrigin?publicApiOrigin(serverOrigin):'';}catch{this.serverOrigin='';}}
+  async search(keyword){if(this.native&&!this.serverOrigin)return {status:'BLOCKED',message:'공공 주소 검색 서버 연결 전입니다. 주소를 직접 입력해 주세요.',items:[]};if(typeof keyword!=='string'||keyword.trim().length<2||keyword.trim().length>100)throw new Error('주소 검색어를 2~100자로 입력해 주세요.');const base=this.native?this.serverOrigin:'';let r;try{r=await this.fetcher(base+'/api/address?keyword='+encodeURIComponent(keyword.trim()),{signal:AbortSignal.timeout(12000),redirect:'error',credentials:'omit',referrerPolicy:'no-referrer'});}catch{throw new Error('공공 주소 서버에 연결하지 못했습니다. 주소를 직접 입력하거나 잠시 후 다시 검색해 주세요.');}if(!r.ok)throw new Error(r.status===429?'공공 주소 조회가 많습니다. 잠시 후 다시 검색해 주세요.':'주소검색 연결 실패');return r.json();}
   async coordinates(address){throw new ProviderBlocked('좌표 API 승인키/변환 연계 미설정 · 지도 또는 좌표 입력으로 확인하세요.');}
 }
 export class PublicDataProvider {
