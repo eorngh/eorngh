@@ -33,7 +33,7 @@ test('configured Android sends only keyword to HTTPS proxy; web retains same-ori
  for(const native of [true,false]){
   let calls=0;const provider=new AddressProvider({native,serverOrigin:'https://example.test',fetcher:async(url,options)=>{
    calls++;assert.equal(url,(native?'https://example.test':'')+'/api/address?keyword='+encodeURIComponent('검증 주소'));
-   assert.equal(options.redirect,'error');assert.equal(options.credentials,'omit');
+   assert.equal(options.redirect,'error');assert.equal(options.credentials,native?'omit':'same-origin');
    return {ok:true,json:async()=>({status:'LIVE',items:[{roadAddress:'검증 주소'}]})};
   }});
   assert.equal((await provider.search('검증 주소')).status,'LIVE');assert.equal(calls,1);
