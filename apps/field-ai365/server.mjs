@@ -1,9 +1,11 @@
+import {createAddressSearch} from './public-api/address.mjs';
 import http from'node:http';import{readFile,stat}from'node:fs/promises';import{resolve,extname,dirname,relative,isAbsolute}from'node:path';import{fileURLToPath}from'node:url';import{applyProposal}from'./public/core.mjs';
 function trustedOrigin(v){try{const u=new URL(v);return u.protocol==='https:'?u.origin:'';}catch{return '';}}
 const ROOT=dirname(fileURLToPath(import.meta.url));
 export async function loadEnv(){try{const raw=await readFile(resolve(ROOT,'.env.local'),'utf8');for(const line of raw.split('\n')){const m=line.match(/^([A-Z_]+)=(.*)$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2];}}catch{}}
 const counts=new Map();
 export function createServer({env=process.env,fetcher=globalThis.fetch}={}){
+ const searchAddress=createAddressSearch({key:env.JUSO_SEARCH_KEY,fetcher});
  return http.createServer(async(req,res)=>{const origin=req.headers.origin;const allowed=(env.ALLOWED_ORIGINS||'http://127.0.0.1:3650,http://localhost:3650,https://appassets.androidplatform.net').split(',');
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=(self)');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com https://dapi.kakao.com https://t1.daumcdn.net https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*.daumcdn.net https://*.kakaocdn.net https://*.kakao.com; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://services.arcgisonline.com https://static-maps-api.arcgis.com https://dapi.kakao.com https://*.daumcdn.net https://www.googleapis.com https://www.gstatic.com https://gyeongilwater.firebaseapp.com "+trustedOrigin(env.TRUSTED_AI_ORIGIN)+"; frame-src https://gyeongilwater.firebaseapp.com https://accounts.google.com https://apis.google.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
@@ -11,9 +13,9 @@ export function createServer({env=process.env,fetcher=globalThis.fetch}={}){
  if(origin&&!allowed.includes(origin))return send(403,{error:'허용되지 않은 출처입니다.'});if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET, POST, OPTIONS'});return res.end();}
  let path;try{path=new URL(req.url,'http://local').pathname;}catch{return send(400,{error:'잘못된 요청'});}
  if(path==='/api/address'){
- const keyword=new URL(req.url,'http://local').searchParams.get('keyword')?.trim();if(!keyword||keyword.length<2||keyword.length>100)return send(400,{error:'주소 검색어를 확인해 주세요.'});
- if(!env.JUSO_SEARCH_KEY)return send(200,{status:'MOCK',message:'실제 주소 API 미설정',items:[{roadAddress:'서울특별시 세종대로 110',parcelAddress:'서울특별시 중구 태평로1가 31',sido:'서울특별시',sigungu:'중구',legalDong:'태평로1가',latitude:37.5665,longitude:126.978,sample:true}]});
- try{const u=new URL('https://business.juso.go.kr/addrlink/addrLinkApi.do');Object.entries({confmKey:env.JUSO_SEARCH_KEY,currentPage:1,countPerPage:10,keyword,resultType:'json'}).forEach(([k,v])=>u.searchParams.set(k,v));const r=await fetcher(u,{signal:AbortSignal.timeout(10000)});const data=(await r.json()).results;if(!r.ok||data?.common?.errorCode!=='0')return send(502,{error:'주소 API 응답 확인 필요'});return send(200,{status:'LIVE',items:(data.juso||[]).map(a=>({roadAddress:a.roadAddr,parcelAddress:a.jibunAddr,sido:a.siNm,sigungu:a.sggNm,legalDong:a.emdNm,adminDong:a.hemdNm}))});}catch{return send(502,{error:'주소 API 연결 실패'});}
+ if(req.method!=='GET')return send(405,{error:'GET 요청이 필요합니다.'});
+ const result=await searchAddress(new URL(req.url,'http://local').searchParams.get('keyword'));
+ return send(result.status==='INVALID'?400:result.status==='ERROR'?502:result.status==='LIMITED'?429:200,result);
  }
  if(path==='/api/firebase-config'){if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress))return send(403,{error:'Local only'});try{const c=JSON.parse(await readFile(resolve(ROOT,'.local/firebase-runtime.json'),'utf8'));return send(200,c);}catch{return send(404,{error:'Local configuration missing'});}}
  if(path==='/api/status')return send(200,{aiEnabled:env.ALLOW_AI_CALLS==='true',firebaseConfigured:!!env.FIREBASE_WEB_API_KEY,version:'0.1.0'});

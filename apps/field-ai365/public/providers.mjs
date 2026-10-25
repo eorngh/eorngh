@@ -40,7 +40,7 @@ export class ArcGISProvider extends MapProvider {
 }
 export class AddressProvider {
   constructor({fetcher=fetch}={}){this.fetcher=fetcher===globalThis.fetch?fetcher.bind(globalThis):fetcher;}
-  async search(keyword){if(globalThis.location?.hostname==='appassets.androidplatform.net')return {status:'MOCK',items:[{roadAddress:'서울특별시 세종대로 110',parcelAddress:'서울특별시 중구 태평로1가 31',latitude:37.5665,longitude:126.978,sample:true}]};if(keyword.trim().length<2)throw new Error('주소를 두 글자 이상 입력해 주세요.');const r=await this.fetcher('/api/address?keyword='+encodeURIComponent(keyword),{signal:AbortSignal.timeout(12000)});if(!r.ok)throw new Error('주소검색 연결 실패');return r.json();}
+  async search(keyword){if(globalThis.location?.hostname==='appassets.androidplatform.net')return {status:'BLOCKED',message:'공공 주소 검색 서버 연결 전입니다. 주소를 직접 입력해 주세요.',items:[]};if(keyword.trim().length<2)throw new Error('주소를 두 글자 이상 입력해 주세요.');const r=await this.fetcher('/api/address?keyword='+encodeURIComponent(keyword),{signal:AbortSignal.timeout(12000)});if(!r.ok)throw new Error('주소검색 연결 실패');return r.json();}
   async coordinates(address){throw new ProviderBlocked('좌표 API 승인키/변환 연계 미설정 · 지도 또는 좌표 입력으로 확인하세요.');}
 }
 export class PublicDataProvider {

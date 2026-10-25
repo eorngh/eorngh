@@ -29,9 +29,25 @@ with sync_playwright() as p:
     page.get_by_label('계약금액 · 원').fill('1000000')
     page.get_by_role('button',name='다음',exact=True).click()
     page.get_by_label('입력 정보와 위치를 확인했습니다.').check()
+    page.evaluate("""async () => {
+      const {Repository}=await import('/store.mjs');
+      const original=Repository.prototype.put;
+      window.qaSiteWrites=0;
+      const gate=new Promise(resolve=>window.qaReleaseSite=resolve);
+      Repository.prototype.put=async function(c,r,...args){
+        if(c==='sites'){window.qaSiteWrites++;await gate;}
+        return original.call(this,c,r,...args);
+      };
+      window.qaRestoreWriter=()=>{Repository.prototype.put=original;};
+    }""")
     page.get_by_role('button',name='확인하고 현장 생성').click()
+    page.locator('#registration-form').evaluate('(form)=>form.requestSubmit()')
+    assert page.evaluate('window.qaSiteWrites')==1
+    page.evaluate('window.qaReleaseSite()')
     page.get_by_role('heading',name='통합 검증 현장',exact=True).wait_for()
+    page.evaluate('window.qaRestoreWriter()')
     results.append({'test':'AI 등록·초안 복원·실제 저장','status':'PASS'})
+    results.append({'test':'저장 지연 중 중복 제출은 현장 한 건만 저장','status':'PASS'})
     page.get_by_role('button',name='일보 작성',exact=True).click()
     page.get_by_label('작업 내용',exact=True).fill('지하수 설비 현장 점검 및 배관 작업. 한글 출력 확인.')
     page.get_by_label('안전 확인 · 직접 점검한 내용').fill('작업 반경과 보호구 착용 상태를 직접 확인했습니다.')
@@ -84,6 +100,21 @@ with sync_playwright() as p:
         page.get_by_role('button',name='PDF 저장',exact=True).first.click()
     estimate_pdf.value.save_as(str(out/'estimate-report.pdf'))
     results.append({'test':'거래처·현장 수금·미수금·견적 저장 및 PDF 연결','status':'PASS'})
+    page.goto('http://127.0.0.1:3650/#settings')
+    with page.expect_download() as backup:
+        page.get_by_role('button',name='백업 저장',exact=True).click()
+    backup_path=out/'synthetic-workspace-backup.json'
+    backup.value.save_as(str(backup_path))
+    saved=json.loads(backup_path.read_text())
+    assert len(saved['data']['sites'])==1 and len(saved['data']['photos'])==1
+    assert saved['data']['photos'][0]['base64'].startswith('data:image/jpeg;base64,')
+    page.once('dialog',lambda dialog: dialog.accept('기기 삭제'))
+    page.get_by_role('button',name='기기 데이터 삭제',exact=True).click()
+    page.get_by_text('기기 기록을 삭제했습니다.',exact=True).wait_for()
+    page.once('dialog',lambda dialog: dialog.accept())
+    page.locator('#restore-file').set_input_files(str(backup_path))
+    page.get_by_text('백업을 복구했습니다.',exact=True).wait_for()
+    results.append({'test':'사진 원본 포함 백업→기기 기록 삭제→실제 IndexedDB 복구','status':'PASS'})
     page.reload()
     page.locator('.mobile-nav [data-id=sites]').click()
     page.get_by_text('통합 검증 현장',exact=False).first.wait_for()
