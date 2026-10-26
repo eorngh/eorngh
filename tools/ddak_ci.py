@@ -11,6 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 notes = []
 failures = []
 checks = 0
+NPM = "npm.cmd" if os.name == "nt" else "npm"
+PUBLIC_FIREBASE_CONFIGS = {
+    Path("apps/field-ai365/android/app/src/main/assets/_firebase-runtime.json"),
+    Path("apps/travel-ddak/dist/firebase-config.js"),
+    Path("apps/travel-ddak/dist/cloud.js"),
+}
 
 def note(label, message):
     notes.append((label, message))
@@ -32,10 +38,6 @@ def tracked_files():
 
 def security_scan():
     # Do not print matched secret content into public Action logs.
-    public_firebase_config = {
-        Path("apps/travel-ddak/dist/firebase-config.js"),
-        Path("apps/travel-ddak/dist/cloud.js"),
-    }
     patterns = [
         re.compile(b"-----BEGIN" + b" (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
         re.compile(b"sk-" + b"proj-[A-Za-z0-9_-]{12,}"),
@@ -54,10 +56,10 @@ def security_scan():
         if not path.is_file() or path.stat().st_size > 2_000_000:
             continue
         data = path.read_bytes()
-        # Firebase browser API keys are public client configuration, not server
-        # credentials. Keep scanning these files for private-key/token patterns,
-        # but do not reject the documented Firebase web config itself.
-        scan_patterns = patterns[:3] if name in public_firebase_config else patterns
+        # Browser Firebase web API keys are public client identifiers, but
+        # private-key, OpenAI key and GitHub token patterns remain forbidden.
+        safe_public_config = name in PUBLIC_FIREBASE_CONFIGS
+        scan_patterns = patterns[:3] if safe_public_config else patterns
         if any(p.search(data) for p in scan_patterns):
             bad.append(str(name))
     if bad:
@@ -77,7 +79,6 @@ def candidate_projects():
 def check_projects():
     global checks
     found = 0
-    npm_command = "npm.cmd" if os.name == "nt" else "npm"
     for base in candidate_projects():
         relative = str(base.relative_to(ROOT)) or "."
         if (base / "package.json").exists():
@@ -91,16 +92,16 @@ def check_projects():
             if not (base / "package-lock.json").is_file():
                 note("SKIP", f"{relative}: npm checks need package-lock.json")
             else:
-                commands = [[npm_command, "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
+                commands = [[NPM, "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
                 backend = base / "backend"
                 if (backend / "package.json").is_file() and (backend / "package-lock.json").is_file():
                     checks += 1
                     note("RUN", f"{relative}/backend: npm ci --ignore-scripts --no-audit --no-fund")
-                    if not run([npm_command, "ci", "--ignore-scripts", "--no-audit", "--no-fund"], backend, timeout=600):
+                    if not run([NPM, "ci", "--ignore-scripts", "--no-audit", "--no-fund"], backend, timeout=600):
                         failures.append(f"{relative}/backend: npm ci")
                         note("FAIL", f"{relative}/backend: dependency install failed")
                         continue
-                commands += [[npm_command, "run", task] for task in ("lint", "test", "build")
+                commands += [[NPM, "run", task] for task in ("lint", "test", "build")
                              if task in pkg.get("scripts", {})]
                 for cmd in commands:
                     checks += 1
