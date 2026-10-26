@@ -1,0 +1,11 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {bundledPdfLib} from './pdf-lib-node.mjs';
+import {buildPdfFromJpegs} from '../public/reports.mjs';
+const lib=await bundledPdfLib();
+const jpeg=new Uint8Array(await readFile(new URL('../tests/fixtures/pdf-page.jpg',import.meta.url)));
+const bytes=await buildPdfFromJpegs(lib,[jpeg,jpeg]);
+const pdf=await lib.PDFDocument.load(bytes);
+if(pdf.getPageCount()!==2||Math.abs(pdf.getPage(0).getWidth()-595.28)>.001)throw Error('PDF adapter verification failed');
+await mkdir(new URL('../evidence/',import.meta.url),{recursive:true});
+await writeFile(new URL('../evidence/pdf-adapter-fixture.pdf',import.meta.url),bytes);
+console.log('PASS: bundled PDF adapter produces two A4 pages. Browser canvas/text rendering remains NOT TESTED.');

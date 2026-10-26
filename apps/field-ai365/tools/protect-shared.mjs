@@ -1,0 +1,3 @@
+import{readFile,writeFile}from'node:fs/promises';
+let p='public/cloud.mjs',s=await readFile(p,'utf8');s=s.replace('this.config=config;','this.config={...config,dedicatedProject:config.projectId===\'gyeongilwater\'?false:config.dedicatedProject};');await writeFile(p,s);
+p='public/app.mjs';s=await readFile(p,'utf8');s=s.replace("if(a==='account-delete'){if(!cloud.session)","if(a==='account-delete'){if(config.projectId==='gyeongilwater'||!config.dedicatedProject){toast('공유 프로젝트의 공용 인증 계정 삭제는 차단됩니다.');return;}if(!cloud.session)");s=s.replace("config=next;localStorage", "if(next.projectId==='gyeongilwater')next.dedicatedProject=false;config=next;localStorage");await writeFile(p,s);

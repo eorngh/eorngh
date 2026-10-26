@@ -1,0 +1,16 @@
+.env*
+!.env.example
+node_modules/
+android/.gradle/
+android/local.properties
+android/**/build/
+*.jks
+*.keystore
+tmp/
+test-results/
+.local/
+dist/
+android/app/src/main/assets/web/
+evidence/
+
+android/app/src/main/assets/_public-api-runtime.json

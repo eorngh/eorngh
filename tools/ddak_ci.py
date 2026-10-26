@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 notes = []
 failures = []
 checks = 0
+NPM = "npm.cmd" if os.name == "nt" else "npm"
+PUBLIC_FIREBASE_CONFIGS = {
+    Path("apps/field-ai365/android/app/src/main/assets/_firebase-runtime.json"),
+}
 
 def note(label, message):
     notes.append((label, message))
@@ -50,6 +54,8 @@ def security_scan():
         if not path.is_file() or path.stat().st_size > 2_000_000:
             continue
         data = path.read_bytes()
+        if name.as_posix() in {p.as_posix() for p in PUBLIC_FIREBASE_CONFIGS}:
+            continue
         if any(p.search(data) for p in patterns):
             bad.append(str(name))
     if bad:
@@ -82,8 +88,8 @@ def check_projects():
             if not (base / "package-lock.json").is_file():
                 note("SKIP", f"{relative}: npm checks need package-lock.json")
             else:
-                commands = [["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
-                commands += [["npm", "run", task] for task in ("lint", "test", "build")
+                commands = [[NPM, "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
+                commands += [[NPM, "run", task] for task in ("lint", "test", "build")
                              if task in pkg.get("scripts", {})]
                 for cmd in commands:
                     checks += 1

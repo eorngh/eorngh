@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+ match /b/{bucket}/o {
+  match /hyeonjang365Users/{uid}/photos/{path=**} {
+   allow list: if request.auth != null && request.auth.uid == uid;
+  }
+  match /hyeonjang365Users/{uid}/photos/{id} {
+   allow read, delete: if request.auth != null && request.auth.uid == uid;
+   allow create, update: if request.auth != null && request.auth.uid == uid
+    && (!firestore.exists(/databases/(default)/documents/hyeonjang365Users/$(uid))
+      || firestore.get(/databases/(default)/documents/hyeonjang365Users/$(uid)).data.deleting != true)
+    && request.resource.size <= 20 * 1024 * 1024
+    && request.resource.contentType.matches('image/(jpeg|png|webp)');
+  }
+  match /{allPaths=**} { allow read, write: if false; }
+ }
+}
