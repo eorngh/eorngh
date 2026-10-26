@@ -14,6 +14,8 @@ checks = 0
 NPM = "npm.cmd" if os.name == "nt" else "npm"
 PUBLIC_FIREBASE_CONFIGS = {
     Path("apps/field-ai365/android/app/src/main/assets/_firebase-runtime.json"),
+    Path("apps/travel-ddak/dist/firebase-config.js"),
+    Path("apps/travel-ddak/dist/cloud.js"),
 }
 
 def note(label, message):
@@ -54,9 +56,11 @@ def security_scan():
         if not path.is_file() or path.stat().st_size > 2_000_000:
             continue
         data = path.read_bytes()
-        if name.as_posix() in {p.as_posix() for p in PUBLIC_FIREBASE_CONFIGS}:
-            continue
-        if any(p.search(data) for p in patterns):
+        # Browser Firebase web API keys are public client identifiers, but
+        # private-key, OpenAI key and GitHub token patterns remain forbidden.
+        safe_public_config = name in PUBLIC_FIREBASE_CONFIGS
+        scan_patterns = patterns[:3] if safe_public_config else patterns
+        if any(p.search(data) for p in scan_patterns):
             bad.append(str(name))
     if bad:
         failures.append("Potential credentials in tracked files")
@@ -89,6 +93,14 @@ def check_projects():
                 note("SKIP", f"{relative}: npm checks need package-lock.json")
             else:
                 commands = [[NPM, "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
+                backend = base / "backend"
+                if (backend / "package.json").is_file() and (backend / "package-lock.json").is_file():
+                    checks += 1
+                    note("RUN", f"{relative}/backend: npm ci --ignore-scripts --no-audit --no-fund")
+                    if not run([NPM, "ci", "--ignore-scripts", "--no-audit", "--no-fund"], backend, timeout=600):
+                        failures.append(f"{relative}/backend: npm ci")
+                        note("FAIL", f"{relative}/backend: dependency install failed")
+                        continue
                 commands += [[NPM, "run", task] for task in ("lint", "test", "build")
                              if task in pkg.get("scripts", {})]
                 for cmd in commands:
