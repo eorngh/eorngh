@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {createAutoJobs} from '../backend/auto-jobs.mjs';
+if(process.env.FIRESTORE_EMULATOR_HOST!=='127.0.0.1:8185')throw Error('Only the isolated emulator is permitted');
+const require=createRequire(new URL('../backend/package.json',import.meta.url));
+const {initializeApp,deleteApp}=require('firebase-admin/app'),{getFirestore}=require('firebase-admin/firestore');
+const app=initializeApp({projectId:'demo-travelddak'}),db=getFirestore(app);
+const auth={uid:'synthetic-auto-test',token:{email:'eorngh@gmail.com'}};
+const start=new Date(Date.now()+20*86400000).toISOString().slice(0,10);
+const input={operation:'register',id:'synthetic-trip',consent:true,timeZone:'Asia/Seoul',trip:{kind:'domestic',parentId:'busan',city:'해운대',start,end:start,days:1,notes:'must-not-store'}};
+let calls=0,quotas=0,finish;
+const service=createAutoJobs({db,reserveQuota:async()=>{quotas++;},officialBundle:async()=>{calls++;return {official:{status:'ok',records:[{id:'123',title:'synthetic fixture',checkedAt:'2026-10-16'}]},photos:[]};},generateAdvice:async()=>({text:'fixture only',officialSources:[{id:'123'}],officialStatus:'ok'})});
+await assert.rejects(()=>service.call({data:input}),e=>e.code==='unauthenticated');
+await assert.rejects(()=>service.call({data:input,auth:{...auth,token:{email:'other@example.invalid'}}}),e=>e.code==='permission-denied');
+const results=await Promise.all([service.call({auth,data:input}),service.call({auth,data:input})]);
+assert.equal(calls,1);assert.equal(quotas,2);assert(results.some(r=>r?.text==='fixture only'));
+const stored=(await db.doc('travelDdakAutoUsers/'+auth.uid).get()).data();assert(!JSON.stringify(stored).includes('must-not-store'));
+await service.tick();assert.equal(calls,1);
+await service.call({auth,data:{operation:'get',id:input.id}});assert.equal(calls,1);
+await service.call({auth,data:{operation:'removeAll'}});assert.deepEqual((await db.doc('travelDdakAutoUsers/'+auth.uid).get()).data().jobs,{});
+// A deletion while a supplier response is pending must never resurrect the job.
+const delayed=createAutoJobs({db,reserveQuota:async()=>{},officialBundle:async()=>{await new Promise(r=>{finish=r;});return {official:{status:'ok',records:[]},photos:[]};},generateAdvice:async()=>({text:'late'})});
+const pending=delayed.call({auth,data:input});while(!finish)await new Promise(r=>setTimeout(r,10));
+await delayed.call({auth,data:{operation:'remove',id:input.id}});finish();await pending;
+assert.deepEqual((await db.doc('travelDdakAutoUsers/'+auth.uid).get()).data().jobs,{});
+await db.doc('travelDdakAutoUsers/'+auth.uid).delete();await deleteApp(app);
+console.log('PASS: emulator authentication, bounded registration, lease deduplication, cache, data minimization, stop and late-answer deletion');

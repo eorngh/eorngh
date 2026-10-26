@@ -1,0 +1,17 @@
+import {createRequire} from 'node:module';import {readFile,writeFile} from 'node:fs/promises';import {createHash,randomUUID} from 'node:crypto';
+const root='C:/Users/eorng/AppData/Local/npm-cache/_npx/735f5eb4e60f1e66/node_modules/firebase-tools',require=createRequire(root+'/package.json');
+const auth=require(root+'/lib/auth.js'),{requireAuth}=require(root+'/lib/requireAuth.js'),{Client}=require(root+'/lib/apiv2.js');const account=auth.getGlobalDefaultAccount();await requireAuth({project:'ddakmodum',nonInteractive:true,...account});
+const final=process.argv.includes('--final'),matrixFile=final?'artifacts/TESTLAB_FINAL_MATRIX.json':'artifacts/TESTLAB_MATRIX.json',statusFile=final?'artifacts/TESTLAB_FINAL_MATRIX_STATUS.json':'artifacts/TESTLAB_MATRIX_STATUS.json';
+const cli=new Client({urlPrefix:'https://testing.googleapis.com',apiVersion:'v1'}),headers={'x-goog-user-project':'ddakmodum'};
+if(process.argv[2]==='status'){
+ const saved=JSON.parse(await readFile(matrixFile,'utf8'));const r=await cli.get('/projects/ddakmodum/testMatrices/'+saved.testMatrixId,{headers,resolveOnHTTPError:true});await writeFile(statusFile,JSON.stringify(r.body,null,2));console.log(JSON.stringify(r.body));
+}else{
+ try{await readFile(matrixFile);throw Error('Existing matrix must be inspected, not duplicated.');}catch(e){if(e.code!=='ENOENT')throw e;}
+ const settings=JSON.parse(await readFile('artifacts/TESTLAB_SETTINGS.json','utf8'));if(!settings.defaultBucket?.startsWith('test-lab-'))throw Error('Use dedicated Test Lab storage only');
+ const bytes=await readFile('artifacts/travel-ddak-release-vc6.apk'),sha=createHash('sha256').update(bytes).digest('hex');
+ const token=await auth.getAccessToken(account.tokens.refresh_token,['https://www.googleapis.com/auth/cloud-platform']);
+ const object='travel-ddak/20261017/'+sha+'.apk',bucket=settings.defaultBucket;
+ const uploaded=await fetch('https://storage.googleapis.com/upload/storage/v1/b/'+bucket+'/o?uploadType=media&name='+encodeURIComponent(object),{method:'POST',headers:{Authorization:'Bearer '+token.access_token,'x-goog-user-project':'ddakmodum','Content-Type':'application/vnd.android.package-archive'},body:bytes});if(!uploaded.ok)throw Error('APK upload HTTP '+uploaded.status);
+ const payload={clientInfo:{name:'travel-ddak-synthetic-qa'},testSpecification:{testTimeout:'180s',testSetup:{dontAutograntPermissions:true},androidRoboTest:{appApk:{gcsPath:'gs://'+bucket+'/'+object},appPackageId:'kr.travelddak.app',roboMode:'ROBO_VERSION_1'}},environmentMatrix:{androidDeviceList:{androidDevices:final?[{androidModelId:'MediumPhone_ps16k.arm',androidVersionId:'36',locale:'ko',orientation:'portrait'}]:[{androidModelId:'SmallPhone.arm',androidVersionId:'34',locale:'ko',orientation:'portrait'},{androidModelId:'MediumPhone.arm',androidVersionId:'36',locale:'ko',orientation:'portrait'},{androidModelId:'dm1q',androidVersionId:'35',locale:'ko',orientation:'portrait'}]}},resultStorage:{googleCloudStorage:{gcsPath:'gs://'+bucket+'/travel-ddak/20261017/results-'+randomUUID()}},flakyTestAttempts:0,failFast:true};
+ const r=await cli.post('/projects/ddakmodum/testMatrices',payload,{headers,queryParams:{requestId:randomUUID()},resolveOnHTTPError:true});await writeFile(matrixFile,JSON.stringify({...r.body,apkSha256:sha},null,2));console.log(JSON.stringify({status:r.status,id:r.body.testMatrixId,state:r.body.state,error:r.body.error,result:r.body.resultStorage}));
+}

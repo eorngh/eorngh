@@ -1,0 +1,8 @@
+{
+  "appId": "kr.travelddak.app",
+  "appName": "여행딱",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false },
+  "plugins": { "SystemBars": { "style": "LIGHT", "insetsHandling": "css", "initialViewportFitValueHint": "cover" } },
+  "server": { "androidScheme": "https" }
+}
