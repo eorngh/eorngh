@@ -1,0 +1,44 @@
+name: Validate evolving automation skill
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.agents/skills/evolving-automation/**'
+      - '.github/workflows/evolving-automation-skill.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.agents/skills/evolving-automation/**'
+      - '.github/workflows/evolving-automation-skill.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  skill-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Skill schema and six profiles
+        run: |
+          python -m pip install PyYAML==6.0.2
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          skill = Path('.agents/skills/evolving-automation/SKILL.md').read_text()
+          meta = yaml.safe_load(skill.split('---', 2)[1])
+          assert set(meta) == {'name', 'description'}
+          assert meta['name'] == 'evolving-automation'
+          assert 0 < len(meta['description']) <= 1024
+          profiles = Path('.agents/skills/evolving-automation/references/task-profiles.md').read_text()
+          ids = ['6ad8f5eb054081919fd35448ca6d168c','6ac9839dbf388191bbb51d58ab0e8030','6ab3d0443ad08191a1ce80b0707a545e','6a48add280cc8191a6d07f9547892baf','6ae92ee795a88191ba1cf9ba17ec81b4','6ae27a9abe5881918eb687a3542c5ad3']
+          assert all(x in profiles for x in ids)
+          print('schema and six profiles OK')
+          PY
+      - name: Deterministic planner tests
+        run: |
+          python -m compileall -q .agents/skills/evolving-automation/scripts
+          python -m unittest discover -s .agents/skills/evolving-automation/tests -v
