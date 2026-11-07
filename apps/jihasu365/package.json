@@ -1,0 +1,7 @@
+{
+  "name": "jihasu365-source",
+  "private": true,
+  "scripts": {
+    "test": "node --check functions/index.js && python -m py_compile functions_py/main.py functions_py/form_pdf.py"
+  }
+}

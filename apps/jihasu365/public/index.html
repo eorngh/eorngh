@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2742">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest?v=j365v120">
+<link rel="icon" href="/icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>지하수365</title>
+<link rel="stylesheet" href="/style.css?v=j365v120">
+</head>
+<body>
+<svg class="iconSprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-site" viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4h2a2 2 0 0 1 2 2v10M8 7h4M8 11h4M8 15h4M16 13h2M16 17h2M2 21h20"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 5-2 8 3 5-2v13l-5 2-8-3-5 2zM8 4v13M16 7v13"/></symbol>
+  <symbol id="i-add" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM15.5 10a2.5 2.5 0 1 0 0-5M3 20v-2a4.5 4.5 0 0 1 9 0v2M13 20v-1.5a4 4 0 0 1 7-2.6V20"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.4 1a7.5 7.5 0 0 0-2.1-1.2L14 3h-4l-.4 2.7a7.5 7.5 0 0 0-2.1 1.2l-2.4-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.4-1a7.5 7.5 0 0 0 2.1 1.2L10 21h4l.4-2.7a7.5 7.5 0 0 0 2.1-1.2l2.4 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h4l1.5-2h5L16 7h4v12H4z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.2A7 7 0 0 1 18.8 7M17.8 15.8A7 7 0 0 1 5.2 17"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+</svg>
+
+<div class="shell">
+  <aside id="sidebar" class="sidebar hidden">
+    <div class="sideBrand"><img class="brandMiniIcon" src="/icon-192.png" alt=""><div><b>지하수365</b><small>Groundwater Operations Cloud</small></div></div>
+    <div class="companyChip"><span>현재 업체</span><b id="sideCompanyName">-</b></div>
+    <nav class="sideNav" aria-label="주요 메뉴">
+      <button data-view="Dashboard" class="navBtn active"><svg class="navIcon"><use href="#i-home"/></svg>대시보드</button>
+      <button data-view="Today" class="navBtn"><svg class="navIcon"><use href="#i-add"/></svg>오늘 기록</button>
+      <button data-view="Sites" class="navBtn"><svg class="navIcon"><use href="#i-site"/></svg>현장</button>
+      <button data-view="Logs" class="navBtn"><svg class="navIcon"><use href="#i-log"/></svg>공사일보</button>
+      <button data-view="Docs" class="navBtn managerOnly"><svg class="navIcon"><use href="#i-doc"/></svg>행정서류</button>
+      <button data-view="Team" class="navBtn managerOnly"><svg class="navIcon"><use href="#i-team"/></svg>직원</button>
+      <button data-view="Account" class="navBtn"><svg class="navIcon"><use href="#i-settings"/></svg>설정</button>
+    </nav>
+    <div class="sideFoot"><small>지하수365 · v1.0.0</small><button id="logoutSide" class="ghostBtn">로그아웃</button></div>
+  </aside>
+
+  <div class="mainPane">
+    <header class="topbar">
+      <div class="mobileBrand"><img class="brandMiniIcon small" src="/icon-192.png" alt=""><div><b>지하수365</b><small id="topCompanyName">현장·행정 통합관리</small></div></div>
+      <div id="topUser" class="topUser hidden"><span id="syncStateBadge" class="syncStateBadge" title="클라우드 동기화 상태">동기화 확인 중</span><span id="networkBadge" class="networkBadge hidden">오프라인</span><div><b id="userName">-</b><small id="roleText">-</small></div><button id="installBtn" class="headerBtn" hidden>앱 설치</button></div>
+    </header>
+
+    <main>
+      <section id="loginCard" class="gateCard loginExperience">
+        <div class="loginHero" aria-hidden="true">
+          <div class="loginHeroShade">
+            <span class="heroBadge">GROUNDWATER FIELD CLOUD</span>
+            <div class="heroCopy"><strong>지하수 개발의 시작부터<br>준공까지 한곳에서.</strong><small>현장 중심 업무를 더 빠르고 정확하게.</small></div>
+          </div>
+        </div>
+        <div class="loginPanel loginPanelSimple">
+          <span class="kicker">지하수 개발 · 현장관리 · 행정서류</span>
+          <h1>지하수365</h1>
+          <p class="loginLead">현장에서 바로 쓰는 지하수 업무앱</p>
+          <button id="loginBtn" class="btn primary xl" disabled>Google로 시작하기</button>
+          <button id="demoBtn" class="btn soft" type="button">로그인 없이 둘러보기</button>
+          <div id="loginMsg" class="statusBox loginStatus" role="status" aria-live="polite">준비 중...</div>
+          <div class="gateLegal"><a href="/privacy.html">개인정보 처리방침</a><span>·</span><a href="/terms.html">이용약관</a></div>
+        </div>
+      </section>
+
+      <section id="onboarding" class="onboarding hidden">
+        <div class="welcome"><span class="kicker">첫 설정</span><h1>업체를 연결하면 바로 시작됩니다.</h1><p id="onboardingEmail"></p></div>
+        <div class="choiceGrid">
+          <article class="choiceCard featured">
+            <span class="choiceIcon">＋</span><h2>새 업체 만들기</h2><p>대표자라면 새 작업공간을 만들고 직원들을 초대하세요.</p>
+            <div class="field"><label>업체명</label><input id="companyName" placeholder="예: 경일지하수"></div>
+            <div class="grid2"><div class="field"><label>대표자</label><input id="ownerName" placeholder="대표자 성명"></div><div class="field"><label>연락처</label><input id="companyPhone" placeholder="010-0000-0000"></div></div>
+            <div class="field"><label>업체 주소 (선택)</label><input id="companyAddress" placeholder="사업장 주소"></div>
+            <button id="createCompanyBtn" class="btn primary full">업체 만들고 시작</button>
+          </article>
+          <article class="choiceCard">
+            <span class="choiceIcon">↗</span><h2>직원으로 참가</h2><p>대표자에게 받은 초대코드를 입력하면 해당 업체에 연결됩니다.</p>
+            <div class="field"><label>초대코드</label><input id="inviteCode" autocomplete="off" placeholder="예: ABCD-EFG-HJK"></div>
+            <button id="joinCompanyBtn" class="btn dark full">초대코드로 참가</button>
+          </article>
+        </div>
+        <button id="logoutOnboarding" class="textBtn">다른 계정으로 로그인</button>
+      </section>
+
+      <div id="app" class="hidden">
+        <section id="viewDashboard" class="view active">
+          <div class="pageTitle"><div><span class="kicker">오늘의 현장</span><h1><span id="greeting">안녕하세요</span>, <b id="dashCompanyName">-</b></h1><p>지금 처리할 일을 먼저 보여드립니다.</p></div><button class="btn primary managerOnly" data-go="Sites" id="quickAddSite">＋ 새 현장</button></div>
+          <section class="panel todayFocus"><div class="panelHead"><div><span class="kicker">TODAY</span><h2>오늘 할 일</h2></div><span id="todayTaskCount" class="countBadge">0건</span></div><div id="todayTasks" class="todayTaskList"><div class="emptyState compact"><div class="emptyStateIcon">✓</div><b>확인 중입니다</b><span>현장 상태를 정리하고 있어요.</span></div></div></section>
+          <div class="statsGrid compactStats">
+            <article class="statCard"><span>진행 중 현장</span><strong id="statSites">0</strong><small>등록 현장</small></article>
+            <article class="statCard"><span>이번 달 공사일보</span><strong id="statLogs">0</strong><small>작성 건수</small></article>
+            <article id="queueStatCard" class="statCard"><span>전송 대기</span><strong id="statQueue">0</strong><small>오프라인 기록</small></article>
+            <article class="statCard"><span>직원</span><strong id="statMembers">-</strong><small>활성 계정</small></article>
+          </div>
+          <div class="dashGrid">
+            <section class="panel"><div class="panelHead"><div><span class="kicker">최근 현장</span><h2>최근 현장</h2></div><button class="linkBtn" data-go="Sites">전체 보기</button></div><div id="dashSites" class="siteList"></div></section>
+            <section class="panel"><div class="panelHead"><div><span class="kicker">최근 공사일보</span><h2>최근 공사일보</h2></div><button class="linkBtn" data-go="Logs">전체 보기</button></div><div id="dashLogs" class="timeline"></div></section>
+          </div>
+          <section class="panel officialResources">
+            <div class="panelHead"><div><span class="kicker">공식 정보 바로가기</span><h2>지하수 실무 참고</h2></div><small class="officialHint">공식기관 원문으로 확인</small></div>
+            <div class="resourceGrid">
+              <a class="resourceCard gims" href="https://new.gims.go.kr/igis" target="_blank" rel="noopener"><span class="resourceIcon">지도</span><div><b>국가지하수정보지도 GIMS</b><small>개발이용관정 · 측정망 · 지적 · 수질 등 확인</small></div><em>열기 ↗</em></a>
+              <a class="resourceCard kogga" href="https://www.kogga.or.kr/mobile/active/ac_toon_list.asp" target="_blank" rel="noopener"><span class="resourceIcon">협회</span><div><b>한국지하수지열협회 웹툰</b><small>허가·신고 · 수질검사 · 원상복구 · 준공신고 참고</small></div><em>열기 ↗</em></a>
+              <a class="resourceCard" href="https://www.kogga.or.kr/mobile/work/wo_gua.asp" target="_blank" rel="noopener"><span class="resourceIcon">보증</span><div><b>원상복구이행보증서</b><small>협회 공식 업무 안내로 이동</small></div><em>열기 ↗</em></a>
+              <a class="resourceCard" href="https://www.kogga.or.kr/mobile/work/wo_mana.asp" target="_blank" rel="noopener"><span class="resourceIcon">관리</span><div><b>사후관리이행확인서</b><small>협회 공식 업무 안내로 이동</small></div><em>열기 ↗</em></a>
+            </div>
+            <p class="sourceNote">※ 지하수365는 GIMS와 한국지하수지열협회의 공식 정보 구조를 참고해 실무 흐름을 쉽게 정리하며, 공식 데이터·웹툰·이미지를 무단 복제하지 않습니다.</p>
+          </section>
+          
+        </section>
+
+        <section id="viewToday" class="view">
+          <div class="pageTitle"><div><span class="kicker">빠른 기록</span><h1>오늘 공사일보</h1><p>현장을 고르고 작업내용과 사진만 저장하면 됩니다.</p></div><button id="syncQueueBtn" class="queueBtn">전송 대기 <b id="queueCount">0</b></button></div>
+          <div class="formLayout">
+            <div>
+              <section class="panel formPanel"><div class="step"><b>01</b><div><h3>현장 선택</h3><p>등록된 현장에서 선택하세요.</p></div></div><div class="field"><label>현장</label><select id="siteSelect"><option value="">현장을 선택하세요</option></select></div><div class="field"><label>현장주소</label><input id="siteAddress" readonly></div></section>
+              <section class="panel formPanel"><div class="step stepWithAction"><b>02</b><div><h3>작업 내용</h3><p>필요한 내용만 간단히 기록하세요.</p></div><button id="copyRecentLogBtn" class="miniActionBtn" type="button" disabled>최근 기록 불러오기</button></div><div id="copyRecentHint" class="copyRecentHint hidden"></div><div class="grid2"><div class="field"><label>작업일</label><input id="date" type="date"></div><div class="field"><label>작업인원</label><input id="workers" type="number" min="0" inputmode="numeric" placeholder="예: 3"></div></div><div class="field"><label>오늘 작업내용</label><textarea id="work" placeholder="예: 굴착 120m 진행, 외부케이싱 30m 설치 완료"></textarea></div><div class="grid2"><div class="field"><label>진행 깊이(m)</label><input id="depth" inputmode="decimal" placeholder="예: 120"></div><div class="field"><label>장비</label><input id="equipment" placeholder="예: 굴착기, 콤프레샤"></div></div><div class="field"><label>자재</label><input id="materials" placeholder="예: 4인치 PVC 10본"></div><div class="field"><label>특이사항</label><textarea id="note" class="smallArea" placeholder="용출량, 지층, 민원, 안전사항 등"></textarea></div></section>
+            </div>
+            <div>
+              <section class="panel formPanel stickyPanel"><div class="step"><b>03</b><div><h3>현장 사진</h3><p>공정별로 분류해 나중에 바로 찾을 수 있습니다.</p></div></div><div class="photoCategoryWrap"><label>사진 종류</label><div id="photoCategoryChips" class="photoCategoryChips"><button type="button" class="active" data-photo-category="굴착중">굴착중</button><button type="button" data-photo-category="착공전">착공전</button><button type="button" data-photo-category="케이싱">케이싱</button><button type="button" data-photo-category="그라우팅">그라우팅</button><button type="button" data-photo-category="보호공">보호공</button><button type="button" data-photo-category="펌프">펌프</button><button type="button" data-photo-category="준공">준공</button><button type="button" data-photo-category="기타">기타</button></div><div id="photoLocationState" class="photoLocationState">현장 GPS가 있으면 사진에 자동 연결됩니다.</div></div><div class="photoActions"><button id="galleryBtn" class="btn dark">갤러리 선택</button><button id="cameraBtn" class="btn soft">카메라</button></div><input id="galleryInput" type="file" accept="image/*" multiple hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><div id="photoPreview" class="photos"></div><div id="status" class="saveStatus" role="status" aria-live="polite">준비됨</div><button id="saveBtn" class="btn primary xl full">공사일보 저장</button></section>
+            </div>
+          </div>
+        </section>
+
+        <section id="viewSites" class="view">
+          <div class="pageTitle"><div><span class="kicker">지하수 현장</span><h1>현장 관리</h1><p>등록 현장과 관정 위치를 목록과 지도에서 함께 관리합니다.</p></div><button id="openAddSite" class="btn primary managerOnly">＋ 새 현장</button></div>
+          <div class="siteViewTabs" role="tablist" aria-label="현장 보기 방식">
+            <button id="sitesTabList" class="siteViewTab active" type="button"><svg class="navIcon"><use href="#i-site"/></svg>목록</button>
+            <button id="sitesTabMap" class="siteViewTab" type="button"><svg class="navIcon"><use href="#i-map"/></svg>지하수 지도</button>
+          </div>
+          <div id="sitesListPane">
+            <div class="siteTools"><div class="siteSearchBox"><span>⌕</span><input id="siteSearchInput" type="search" placeholder="현장명·주소·고객 검색"></div><select id="siteStatusFilter" aria-label="현장 상태 필터"><option value="all">전체 상태</option><option value="active">진행중</option><option value="planned">예정</option><option value="completed">완료</option></select></div>
+            <section id="addSitePanel" class="panel hidden managerOnly"><div class="panelHead"><div><span class="kicker">새 현장</span><h2>새 현장 등록</h2></div><button id="closeAddSite" class="textBtn">닫기</button></div><div class="grid2"><div class="field"><label>현장명</label><input id="newSiteName" placeholder="주소 선택 시 자동 입력"></div><div class="field"><label>상태</label><select id="newSiteStatus"><option value="active">진행중</option><option value="planned">예정</option><option value="completed">완료</option></select></div></div><div class="field"><label>현장주소</label><div class="inputAction"><input id="newSiteAddress" readonly placeholder="주소 검색으로 선택하세요"><button id="searchSiteAddressBtn" class="btn soft">주소 검색</button></div></div><div class="grid2"><div class="field"><label>발주자/고객 (선택)</label><input id="newSiteClient" placeholder="성명 또는 업체"></div><div class="field"><label>연락처 (선택)</label><input id="newSitePhone" placeholder="010-0000-0000"></div></div><div class="field"><label>관정 위치 (선택)</label><div class="gpsCaptureRow"><div><b id="newSiteGpsText">GPS 미입력</b><small>현장에 있을 때 현재 위치를 저장하면 지도에서 바로 확인할 수 있습니다.</small></div><button id="newSiteGpsBtn" class="btn soft" type="button">현재 GPS 저장</button></div><input id="newSiteLat" type="hidden"><input id="newSiteLng" type="hidden"></div><button id="addSiteBtn" class="btn primary">현장 등록</button></section>
+            <div id="sitesOverview" class="siteBoard"></div>
+          </div>
+          <div id="sitesMapPane" class="hidden">
+            <section class="panel mapPanel">
+              <div class="mapTopbar"><div><span class="kicker">등록 현장 지도</span><h2>관정 위치 한눈에 보기</h2><p>지하수365에 저장한 GPS 좌표를 지도에 표시합니다.</p></div><div class="mapActions"><button id="mapMyLocationBtn" class="btn soft" type="button">현재 위치</button><button id="openGimsBtn" class="btn primary" type="button">국가지하수정보지도 열기</button></div></div>
+              <div id="groundwaterMap" class="groundwaterMap" aria-label="지하수 현장 지도"></div>
+              <div id="mapEmptyNotice" class="mapEmptyNotice hidden">GPS 좌표가 저장된 현장이 없습니다. 현장에서 <b>새 현장 → 현재 GPS 저장</b>을 사용해 주세요.</div>
+            </section>
+            <section class="panel gimsGuide">
+              <div class="panelHead"><div><span class="kicker">공식 지하수 정보</span><h2>GIMS에서 함께 확인하면 좋은 레이어</h2></div><a class="linkBtn" href="https://new.gims.go.kr/igis" target="_blank" rel="noopener">공식사이트 ↗</a></div>
+              <p class="migrationText">국가지하수정보센터(GIMS)의 공식 지도에는 개발이용관정, 측정망, 지적도, 수문지질도, 심도분포도, 지하수 수질현황 등 전문 레이어가 제공됩니다. 지하수365는 현재 등록 현장 GPS를 빠르게 확인하고, 전문 지하수 정보는 공식 GIMS 화면으로 연결합니다.</p>
+              <div class="gimsLayerChips"><button data-gims-layer="개발이용관정">개발이용관정</button><button data-gims-layer="측정망">측정망</button><button data-gims-layer="연속지적도">연속지적도</button><button data-gims-layer="수문지질도">수문지질도</button><button data-gims-layer="심도분포도">심도분포도</button><button data-gims-layer="지하수수질현황도">수질현황</button></div>
+              <small class="sourceNote">※ GIMS의 데이터·지도 레이어를 무단 복제하지 않고 공식 서비스로 연결합니다. 공개 API 또는 정식 이용경로가 확인되면 지하수365 내부 레이어 연동으로 확장할 수 있습니다.</small>
+            </section>
+          </div>
+        </section>
+
+        <section id="viewLogs" class="view">
+          <div class="pageTitle"><div><span class="kicker">기록 관리</span><h1>공사일보</h1><p>최근 현장 기록을 날짜순으로 확인합니다.</p></div><button id="refreshLogsBtn" class="btn soft">새로고침</button></div>
+          <section class="panel"><div id="recentLogs" class="timeline"></div></section>
+        </section>
+
+        <section id="viewDocs" class="view managerOnly">
+          <div class="pageTitle"><div><span class="kicker">행정서류</span><h1>행정서류</h1><p>현장을 선택하면 앱이 필요한 항목을 하나씩 물어보고 신고서를 작성합니다.</p></div><button id="docsStartBtn" class="btn primary">＋ 신고서 작성</button></div>
+          <div class="docsLayout">
+            <section class="panel"><div class="panelHead"><div><span class="kicker">현장</span><h2>현장 선택</h2></div></div><div class="field"><label>신고서를 작성할 현장</label><select id="docsSiteSelect"><option value="">현장을 선택하세요</option></select></div><div id="docsSiteSummary" class="docsSiteSummary"><div class="empty">현장을 선택하세요.</div></div></section>
+            <section class="panel"><div class="panelHead"><div><span class="kicker">질문식 작성</span><h2>질문식 작성</h2></div><span class="alphaBadge">현장용 간편작성</span></div><div class="flowPreview"><div><b>1</b><span>서류 단계 선택</span></div><div><b>2</b><span>신고인 정보</span></div><div><b>3</b><span>굴착·펌프 정보</span></div><div><b>4</b><span>GPS · 일정</span></div><div><b>5</b><span>검토 후 PDF 생성</span></div></div><button id="docsStartBtn2" class="btn dark full">선택 현장 신고서 시작</button></section>
+          </div>
+          <section class="panel"><div class="panelHead"><div><span class="kicker">지원 서식</span><h2>지원 신고서 4종</h2></div></div><div class="formTypeGrid"><div><b>제22호</b><span>굴착행위 신고서</span></div><div><b>제9호</b><span>지하수개발·이용 신고서</span></div><div><b>제25호</b><span>굴착행위 종료신고서</span></div><div><b>제13호</b><span>지하수개발·이용 준공신고서</span></div></div></section>
+        </section>
+
+        <section id="viewTeam" class="view managerOnly">
+          <div class="pageTitle"><div><span class="kicker">직원 관리</span><h1>직원 관리</h1><p>초대코드로 직원을 안전하게 업체에 연결합니다.</p></div><button id="createInviteBtn" class="btn primary">＋ 초대코드 만들기</button></div>
+          <section id="inviteResult" class="inviteBanner hidden"><div><span>직원 초대코드</span><strong id="inviteResultCode">-</strong><small id="inviteExpire">7일간 유효</small></div><button id="copyInviteBtn" class="btn light">코드 복사</button></section>
+          <section class="panel"><div class="panelHead"><div><span class="kicker">MEMBERS</span><h2>활성 직원</h2></div><span id="memberCountBadge" class="countBadge">0명</span></div><div id="usersList" class="memberList"></div></section>
+        </section>
+
+        <section id="viewAccount" class="view">
+          <div class="pageTitle"><div><span class="kicker">설정</span><h1>업체 · 계정</h1><p>현재 연결 상태와 클라우드 정보를 확인합니다.</p></div></div>
+          <div class="settingsGrid"><section class="panel"><div class="panelHead"><div><span class="kicker">업체</span><h2>업체 정보</h2></div></div><div class="infoRow"><span>업체명</span><b id="accountCompany">-</b></div><div class="infoRow"><span>요금제</span><b id="accountPlan">PRO</b></div><div class="infoRow"><span>내 권한</span><b id="accountRole">-</b></div></section><section class="panel"><div class="panelHead"><div><span class="kicker">동기화</span><h2>클라우드 상태</h2></div></div><div class="infoRow"><span>로그인 계정</span><b id="accountEmail">-</b></div><div class="infoRow"><span>전송 대기</span><b><span id="queueCountMirror">0</span>건</b></div><button id="syncQueueMirror" class="btn soft full">전송 대기 다시 보내기</button></section></div>
+          <section class="panel ownerOnly"><div class="panelHead"><div><span class="kicker">기존 자료</span><h2>기존 자료 이전</h2></div></div><p class="migrationText">기존에 저장한 현장·공사일보 자료를 현재 업체 작업공간으로 복사합니다. 원본은 삭제하지 않습니다.</p><button id="migrateLegacyBtn" class="btn dark">기존 자료 확인 · 이전</button></section>
+          <section class="panel"><div class="panelHead"><div><span class="kicker">개인정보</span><h2>개인정보 · 계정관리</h2></div></div><p class="migrationText">지하수365의 개인정보 처리방침과 서비스 이용약관을 확인하고, 필요하면 계정과 관련 데이터를 삭제할 수 있습니다.</p><div class="legalActions"><a class="btn soft" href="/privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a><a class="btn soft" href="/terms.html" target="_blank" rel="noopener">이용약관</a><button id="deleteAccountBtn" class="btn danger">내 계정 삭제</button></div></section>
+          <button id="logoutBtn" class="btn danger">로그아웃</button>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<nav id="bottomNav" class="bottomNav hidden" aria-label="하단 메뉴"><button data-view="Dashboard" class="navItem active"><svg class="navIcon"><use href="#i-home"/></svg><span>홈</span></button><button data-view="Sites" class="navItem"><svg class="navIcon"><use href="#i-site"/></svg><span>현장</span></button><button id="quickActionBtn" class="navItem capture" type="button" aria-label="빠른 작업"><svg class="navIcon"><use href="#i-add"/></svg><span>빠른 작업</span></button><button data-view="Docs" class="navItem managerOnly"><svg class="navIcon"><use href="#i-doc"/></svg><span>서류</span></button><button data-view="Account" class="navItem"><svg class="navIcon"><use href="#i-settings"/></svg><span>내정보</span></button></nav>
+<div id="quickActionSheet" class="quickActionSheet hidden" role="dialog" aria-modal="true" aria-label="빠른 작업"><button id="quickActionBackdrop" class="quickActionBackdrop" aria-label="빠른 작업 닫기"></button><div class="quickActionPanel"><div class="quickActionHandle"></div><div class="quickActionHead"><div><span class="kicker">QUICK ACTION</span><h2>무엇을 할까요?</h2></div><button id="quickActionClose" class="iconBtn" aria-label="닫기">×</button></div><div class="quickActionGrid"><button type="button" data-quick="photo"><span class="quickIcon blue"><svg><use href="#i-camera"/></svg></span><b>현장 사진</b><small>현장 선택 후 바로 촬영</small></button><button type="button" data-quick="log"><span class="quickIcon teal"><svg><use href="#i-log"/></svg></span><b>공사일보</b><small>오늘 작업 기록 작성</small></button><button type="button" data-quick="site" class="managerOnly"><span class="quickIcon orange"><svg><use href="#i-add"/></svg></span><b>새 현장</b><small>주소·GPS로 현장 등록</small></button><button type="button" data-quick="docs" class="managerOnly"><span class="quickIcon purple"><svg><use href="#i-doc"/></svg></span><b>신고서</b><small>질문식 행정서류 작성</small></button></div></div></div>
+
+<div id="addressModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="주소 검색"><div class="modalSheet"><div class="modalHead"><b>현장주소 검색</b><button id="closeAddressModal" class="textBtn">닫기</button></div><div id="postcodeWrap"></div></div></div>
+<div id="siteModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="현장 상세"><div class="modalSheet siteSheet"><div class="modalHead"><div><small>현장 상세</small><b id="siteModalName">-</b></div><button id="closeSiteModal" class="textBtn">닫기</button></div><div id="siteModalBody" class="siteModalBody"></div></div></div>
+<div id="permitWizardModal" class="permitModal hidden" role="dialog" aria-modal="true" aria-label="신고서 질문식 작성">
+  <div class="permitSheet">
+    <header class="permitHeader"><button id="permitCloseBtn" class="iconBtn" aria-label="닫기">×</button><div><small id="permitSiteLabel">현장 신고서</small><b id="permitStepTitle">질문식 작성</b></div><span id="permitProgressText">준비</span></header>
+    <div id="permitStageNav" class="permitStageNav"><span data-stage="1"><b>1</b><em>신고인</em></span><span data-stage="2"><b>2</b><em>현장</em></span><span data-stage="3"><b>3</b><em>용도</em></span><span data-stage="4"><b>4</b><em>공사정보</em></span><span data-stage="5"><b>5</b><em>확인</em></span></div>
+    <div class="permitProgress"><i id="permitProgressBar"></i></div>
+    <main class="permitBody">
+      <div id="permitQuestionWrap" class="permitQuestionWrap"></div>
+      <div id="permitReviewWrap" class="permitReviewWrap hidden"></div>
+      <div id="permitResultWrap" class="permitResultWrap hidden"></div>
+    </main>
+    <footer class="permitFooter"><button id="permitBackBtn" class="btn soft">이전</button><button id="permitNextBtn" class="btn primary">다음</button><button id="permitGenerateBtn" class="btn primary hidden">PDF 생성</button></footer>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="/app.js?v=j365v120"></script>
+</body></html>

@@ -1,0 +1,15 @@
+.firebase/
+functions/node_modules/
+functions_py/__pycache__/
+**/node_modules/
+*.pyc
+*.pyo
+*.log
+*.env
+*.env.*
+!*.env.example
+playstore/
+release/
+dist/
+build/
+local.properties

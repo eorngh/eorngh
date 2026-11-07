@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "kr.co.gyeongil.jihasu365",
+      "sha256_cert_fingerprints": [
+        "5B:F4:A3:08:32:B4:C3:59:6D:BF:54:C3:89:0F:EB:7F:12:F2:6C:4B:8E:C2:5A:6B:F2:67:86:99:69:97:FF:8D"
+      ]
+    }
+  }
+]
