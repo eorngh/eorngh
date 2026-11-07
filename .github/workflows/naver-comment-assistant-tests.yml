@@ -1,0 +1,22 @@
+name: Naver Comment Assistant Tests
+
+on:
+  pull_request:
+    paths:
+      - "tools/naver-comment-assistant/**"
+      - ".github/workflows/naver-comment-assistant-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check syntax
+        run: python -m py_compile tools/naver-comment-assistant/comment_assistant.py
+      - name: Run unit tests
+        working-directory: tools/naver-comment-assistant
+        run: python -m unittest discover -s tests -v
